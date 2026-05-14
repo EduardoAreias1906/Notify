@@ -19,8 +19,10 @@ As tags são geradas automaticamente, o summary é gerado apenas a pedido do uti
 ### [12/05/2026] — Swagger
 Mantive o Swagger porque queria uma interface gráfica onde ir testando os endpoints à medida que os adiciono, sem ter de escrever curl ou usar um cliente externo. Considerei a alternativa do REST Client (ficheiros .http versionáveis no repositório) mas para um projeto em desenvolvimento ativo a comodidade da UI do Swagger pareceu-me mais útil.
 
-### [14/05/2026] — migrações do EF Core
+### [14/05/2026] — persistência com EF Core e SQLite
+Para guardar as notas escolhi SQLite, porque é leve e cabe num ficheiro só. Para falar com a base de dados usei o EF Core, que é um ORM, ou seja, em vez de escrever SQL à mão escrevo código C# (db.Notes.Add(...)) e o EF trata de gerar o SQL. Considerei Dapper (mais leve mas teria de escrever SQL à mão) e ADO.NET puro (muito mais código). Para um projeto pequeno como este, o EF Core compensa pela rapidez de desenvolvimento.
 
+### [14/05/2026] — migrações do EF Core
 Uma migração é uma alteração ao schema da base de dados descrita em código. Cada migração tem um nome e um timestamp, e fica versionada no Git.
 
 Ao correr `dotnet ef migrations add InitialCreate`, foi criada uma pasta `Migrations/` com três ficheiros, que pertencem a esta única migração:
@@ -31,25 +33,34 @@ Ao correr `dotnet ef migrations add InitialCreate`, foi criada uma pasta `Migrat
 
 Depois de `dotnet ef database update`, foi criado o ficheiro `notes.db` (SQLite) com a tabela Notes pronta a usar.
 
+### [14/05/2026] — DTOs para os endpoints
+Inicialmente questionei se um DTO CreateNoteRequest era mesmo necessário, pensando que "request" implicava validação. Percebi que o nome é só convenção: o DTO existe para deixar claro no código quais os campos que o cliente pode mandar no endpoint. Como decidi que o cliente só fornece Title e Content (o resto é responsabilidade do servidor: Id da BD, datas no momento da operação, Tags do LLM, Summary a pedido), o DTO tem só esses dois campos. Usar a entidade Note diretamente deixaria o cliente mandar coisas que não devia.
+
+Vou ter dois DTOs: CreateNoteRequest (Title, Content) para o POST, e UpdateNoteRequest (Title, Content, Tags) para o PUT. Nos GETs devolvo a Note diretamente, para simplificar. Numa aplicação maior faria também um NoteResponse separado.
+
 ## Uso de IA
 
-Até agora usei apenas o chat do Claude como apoio. Não usei Copilot, Cursor ou ChatGPT em paralelo.
+Até agora usei apenas o chat do Claude como apoio. Não usei Copilot, Cursor ou ChatGPT em paralelo. A partir desta fase vou continuar com Claude Code dentro do VS Code, para uma colaboração mais direta com o código à medida que entro na parte dos endpoints.
 
 ### O que aceitei sem grande questionamento
 - Escolha inicial do Gemini como provider (antes de ele falhar).
 - A sugestão de criar o ficheiro NOTES.md em paralelo para registar o processo.
+- A estrutura de pastas (Models/, Data/, Dtos/).
+- A convenção de usar DateTime.UtcNow em vez de DateTime.Now.
 
 ### O que questionei ou validei
-- Perguntei se o Swagger era mesmo necessário. O Claude admitiu que o REST Client era alternativa válida e que tinha sugerido Swagger "por instinto". Mantive o Swagger por causa da UI interativa, prática durante o desenvolvimento.
+- Perguntei se o Swagger era mesmo necessário. O Claude admitiu que o REST Client era alternativa válida e que tinha sugerido Swagger "por instinto". Mantive o Swagger por causa da UI interativa, prática durante o desenvolvimento, mas a partir de uma escolha consciente.
+- Questionei a necessidade do DTO CreateNoteRequest. A explicação fez sentido. Acabou por ser uma decisão tomada de forma consciente.
 
 ### O que fiz sem ajuda
 - Escrita inicial da classe Note.
-- Decisão sobre o comportamento das tags e do summary.
+- Decisão sobre o comportamento das tags (automáticas, editáveis) e do summary (sob demanda).
 
 ## Dificuldades e como as resolvi
 
 - **Erro 429 do Gemini ao testar a chave.** Pela mensagem ("limit: 0") percebemos que o problema não era ter excedido quota, era não ter quota nenhuma atribuída. A causa foi a nova política do Google de exigir cartão mesmo no tier gratuito. Solução: trocar para Groq.
 - **localhost a dar 404 depois de `dotnet run`.** A aplicação corria mas a raiz não tinha página. Descobrimos que o template do .NET 9 já não inclui Swagger por defeito (a Microsoft removeu na versão recente). Solução: instalar o pacote Swashbuckle.AspNetCore manualmente e adicionar as quatro linhas necessárias ao Program.cs.
+- **dotnet ef does not exist.** Ao tentar criar a primeira migração, o terminal não reconhecia o comando. A ferramenta dotnet-ef não vem com o SDK por defeito, é uma ferramenta global à parte. Solução: instalar com `dotnet tool install --global dotnet-ef` e adicionar `$HOME/.dotnet/tools` ao PATH no `.zshrc`.
 
 ## Para o README final
 
