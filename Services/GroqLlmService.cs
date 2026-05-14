@@ -19,7 +19,7 @@ public class GroqLlmService : ILlmService
     {
         // Pedimos ao LLM que devolva apenas as tags separadas por vírgula, sem texto extra
         var response = await SendRequestAsync(
-            systemPrompt: "You are a tagging assistant. Given a note's title and content, return 3 to 5 relevant tags as a comma-separated list. Return only the tags, nothing else. Example: productivity, work, meeting",
+            systemPrompt: "You are a tagging assistant. Given a note's title and content, return 3 to 5 relevant tags as a comma-separated list. Return only the tags, nothing else. Always respond in European Portuguese (Portugal). Example: produtividade, trabalho, reunião",
             userMessage: $"Title: {title}\nContent: {content}"
         );
 
@@ -33,7 +33,7 @@ public class GroqLlmService : ILlmService
     public async Task<string> GenerateSummaryAsync(string title, string content)
     {
         return await SendRequestAsync(
-            systemPrompt: "You are a summarization assistant. Given a note's title and content, write a concise summary in 1-2 sentences. Return only the summary, nothing else.",
+            systemPrompt: "You are a summarization assistant. Given a note's title and content, write a single short sentence that captures the core idea. Be brief and direct. Return only that sentence, nothing else. Always respond in European Portuguese (Portugal).",
             userMessage: $"Title: {title}\nContent: {content}"
         );
     }

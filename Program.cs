@@ -38,6 +38,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+// Serve ficheiros estáticos da pasta wwwroot/ (ex: index.html)
+app.UseStaticFiles();
 
 // --- Endpoints ---
 

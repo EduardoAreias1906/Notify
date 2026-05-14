@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notify</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 { font-size: 1.4rem; font-weight: 700; }
+
+    main { max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; }
+
+    /* Estado vazio */
+    #empty-state {
+      text-align: center;
+      color: #888;
+      margin-top: 4rem;
+      font-size: 1rem;
+      display: none;
+    }
+
+    /* Grelha de notas */
+    #notes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    .note-card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .note-card h3 { font-size: 1rem; font-weight: 600; }
+
+    .note-card .content {
+      font-size: 0.875rem;
+      color: #444;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Tags */
+    .tags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
+    .tag {
+      background: #e8f0fe;
+      color: #3b5bdb;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+    }
+
+    /* Summary */
+    .summary {
+      font-size: 0.8rem;
+      color: #555;
+      background: #f9f9f9;
+      border-left: 3px solid #ccc;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+    }
+
+    /* Ações do card */
+    .card-actions {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-top: 0.25rem;
+    }
+
+    /* Botões */
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      transition: opacity 0.15s;
+    }
+
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary { background: #3b5bdb; color: #fff; }
+    .btn-secondary { background: #f0f0f0; color: #333; }
+    .btn-danger { background: #fa5252; color: #fff; }
+
+    #btn-new { padding: 0.5rem 1rem; font-size: 0.9rem; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .modal h2 { font-size: 1.1rem; }
+
+    .modal input, .modal textarea {
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.9rem;
+      font-family: inherit;
+      resize: vertical;
+    }
+
+    .modal textarea { min-height: 120px; }
+
+    .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Notify</h1>
+    <button class="btn-primary" id="btn-new">+ Nova Nota</button>
+  </header>
+
+  <main>
+    <p id="empty-state">Não existem notas. Cria a primeira!</p>
+    <div id="notes-grid"></div>
+  </main>
+
+  <!-- Modal criar / editar nota -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <h2 id="modal-title">Nova Nota</h2>
+      <input type="text" id="input-title" placeholder="Título" />
+      <textarea id="input-content" placeholder="Conteúdo"></textarea>
+      <!-- Campo de tags só aparece no modo edição -->
+      <div id="tags-field" style="display:none;">
+        <input type="text" id="input-tags" placeholder="Tags (separadas por vírgula)" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="btn-cancel">Cancelar</button>
+        <button class="btn-primary" id="btn-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/notes';
+    let editingId = null; // null = criar, número = editar
+
+    // ── Carregar e renderizar notas ──────────────────────────────────────────
+
+    async function loadNotes() {
+      const res = await fetch(API);
+      const notes = await res.json();
+      renderNotes(notes);
+    }
+
+    function renderNotes(notes) {
+      const grid = document.getElementById('notes-grid');
+      const empty = document.getElementById('empty-state');
+
+      grid.innerHTML = '';
+
+      if (notes.length === 0) {
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+
+      notes.forEach(note => grid.appendChild(buildCard(note)));
+    }
+
+    function buildCard(note) {
+      const card = document.createElement('div');
+      card.className = 'note-card';
+      card.dataset.id = note.id;
+
+      // Título
+      const title = document.createElement('h3');
+      title.textContent = note.title;
+      card.appendChild(title);
+
+      // Conteúdo
+      const content = document.createElement('p');
+      content.className = 'content';
+      content.textContent = note.content;
+      card.appendChild(content);
+
+      // Tags
+      if (note.tags && note.tags.length > 0) {
+        const tagsDiv = document.createElement('div');
+        tagsDiv.className = 'tags';
+        note.tags.forEach(tag => {
+          const span = document.createElement('span');
+          span.className = 'tag';
+          span.textContent = tag;
+          tagsDiv.appendChild(span);
+        });
+        card.appendChild(tagsDiv);
+      }
+
+      // Summary (se existir)
+      if (note.summary) {
+        const summary = document.createElement('p');
+        summary.className = 'summary';
+        summary.textContent = note.summary;
+        card.appendChild(summary);
+      }
+
+      // Ações
+      const actions = document.createElement('div');
+      actions.className = 'card-actions';
+
+      // Botão summary (só aparece se ainda não tiver)
+      if (!note.summary) {
+        const btnSummary = document.createElement('button');
+        btnSummary.className = 'btn-secondary';
+        btnSummary.textContent = 'Gerar Resumo';
+        btnSummary.onclick = () => generateSummary(note.id, btnSummary);
+        actions.appendChild(btnSummary);
+      }
+
+      // Botão editar
+      const btnEdit = document.createElement('button');
+      btnEdit.className = 'btn-secondary';
+      btnEdit.textContent = 'Editar';
+      btnEdit.onclick = () => openEditModal(note);
+      actions.appendChild(btnEdit);
+
+      // Botão apagar
+      const btnDelete = document.createElement('button');
+      btnDelete.className = 'btn-danger';
+      btnDelete.textContent = 'Apagar';
+      btnDelete.onclick = () => deleteNote(note.id);
+      actions.appendChild(btnDelete);
+
+      card.appendChild(actions);
+      return card;
+    }
+
+    // ── Criar nota ───────────────────────────────────────────────────────────
+
+    function openCreateModal() {
+      editingId = null;
+      document.getElementById('modal-title').textContent = 'Nova Nota';
+      document.getElementById('input-title').value = '';
+      document.getElementById('input-content').value = '';
+      document.getElementById('tags-field').style.display = 'none';
+      document.getElementById('modal-overlay').classList.add('open');
+    }
+
+    // ── Editar nota ──────────────────────────────────────────────────────────
+
+    function openEditModal(note) {
+      editingId = note.id;
+      document.getElementById('modal-title').textContent = 'Editar Nota';
+      document.getElementById('input-title').value = note.title;
+      document.getElementById('input-content').value = note.content;
+      document.getElementById('input-tags').value = note.tags.join(', ');
+      document.getElementById('tags-field').style.display = 'block';
+      document.getElementById('modal-overlay').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('open');
+    }
+
+    async function saveNote() {
+      const title = document.getElementById('input-title').value.trim();
+      const content = document.getElementById('input-content').value.trim();
+      if (!title || !content) return;
+
+      const btn = document.getElementById('btn-save');
+      btn.disabled = true;
+      btn.textContent = 'A guardar...';
+
+      if (editingId === null) {
+        // Criar — o servidor gera as tags via LLM
+        await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, content })
+        });
+      } else {
+        // Editar — enviamos as tags editadas pelo utilizador
+        const tags = document.getElementById('input-tags').value
+          .split(',')
+          .map(t => t.trim())
+          .filter(t => t.length > 0);
+
+        await fetch(`${API}/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, content, tags })
+        });
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Guardar';
+      closeModal();
+      loadNotes();
+    }
+
+    // ── Gerar summary ────────────────────────────────────────────────────────
+
+    async function generateSummary(id, btn) {
+      btn.disabled = true;
+      btn.textContent = 'A gerar...';
+      await fetch(`${API}/${id}/summary`, { method: 'POST' });
+      loadNotes();
+    }
+
+    // ── Apagar nota ──────────────────────────────────────────────────────────
+
+    async function deleteNote(id) {
+      if (!confirm('Tens a certeza que queres apagar esta nota?')) return;
+      await fetch(`${API}/${id}`, { method: 'DELETE' });
+      loadNotes();
+    }
+
+    // ── Eventos ──────────────────────────────────────────────────────────────
+
+    document.getElementById('btn-new').onclick = openCreateModal;
+    document.getElementById('btn-cancel').onclick = closeModal;
+    document.getElementById('btn-save').onclick = saveNote;
+
+    // Fechar modal ao clicar fora
+    document.getElementById('modal-overlay').onclick = (e) => {
+      if (e.target === document.getElementById('modal-overlay')) closeModal();
+    };
+
+    // Carregar notas ao iniciar
+    loadNotes();
+  </script>
+
+</body>
+</html>
