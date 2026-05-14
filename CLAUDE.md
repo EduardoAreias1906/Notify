@@ -18,7 +18,7 @@ API REST em .NET 9 com integração de LLM, feita como desafio técnico após um
 
 ## Decisões já tomadas (resumo — detalhe em NOTES.md)
 
-- **LLM provider:** Groq (modelo Llama 3.3 70B), API compatível com OpenAI.
+- **LLM provider:** Groq, API compatível com OpenAI.
 - **Estilo da API:** Minimal API (endpoints em Program.cs), não Controllers.
 - **Persistência:** EF Core com SQLite, code-first com migrações.
 - **Id da entidade Note:** int (auto-increment).
@@ -35,22 +35,20 @@ Já feito:
 - Modelo Note com conversão de Tags para string CSV no SQLite
 - AppDbContext registado com SQLite
 - Primeira migração (InitialCreate) aplicada
-- DTO CreateNoteRequest a fazer (ou feito, confirma com o utilizador)
-
-A fazer já a seguir:
+- DTOs: CreateNoteRequest e UpdateNoteRequest
 - Endpoints CRUD: POST /notes, GET /notes, GET /notes/{id}, PUT /notes/{id}, DELETE /notes/{id}
-- Sem integração LLM ainda — Tags ficam vazias, Summary fica null nesta fase
-
-Próxima fase (depois do CRUD):
-- ILlmService + GroqLlmService
-- Integração de geração de tags no POST
+- ILlmService + GroqLlmService com HttpClient
+- Chave do Groq em dotnet user-secrets
+- Geração de tags no POST /notes
 - Endpoint POST /notes/{id}/summary
-- Configuração segura da chave (dotnet user-secrets)
+
+A fazer:
+- README final
 
 ## Convenções
 
 - Namespace raiz: Notify
-- Pastas: Models/, Data/, Dtos/, Services/ (a criar), Migrations/
+- Pastas: Models/, Data/, Dtos/, Services/, Migrations/
 - Connection string: "Data Source=notes.db"
 - Nunca DateTime.Now, sempre DateTime.UtcNow
 - Commits pequenos e frequentes, mensagens em inglês

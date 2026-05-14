@@ -38,6 +38,17 @@ Inicialmente questionei se um DTO CreateNoteRequest era mesmo necessário, pensa
 
 Vou ter dois DTOs: CreateNoteRequest (Title, Content) para o POST, e UpdateNoteRequest (Title, Content, Tags) para o PUT. Nos GETs devolvo a Note diretamente, para simplificar. Numa aplicação maior faria também um NoteResponse separado.
 
+### [14/05/2026] - API Key Safety
+Para assegurar a segurança da API Key do Groq foi utilizado o **dotnet user-secrets**, para guardar a chave do groq fora do projeto, em **~/.microsoft/usersecrets/**, para nunca entrar no git. Alternativa considerada: ficheiro .env com gitignore, mas user-secrets é mais idiomático em .NET.
+
+### [14/05/2026] — Abstração ILlmService
+Criei uma interface ILlmService em vez de chamar o Groq diretamente nos endpoints. A interface define dois métodos: GenerateTagsAsync e GenerateSummaryAsync. A implementação concreta (GroqLlmService) fica separada. A vantagem é que se quiser trocar de provider (Groq → OpenAI, por exemplo), só mudo a implementação sem tocar nos endpoints. Para um projeto pequeno é uma abstração ligeira e justificada.
+
+### [14/05/2026] — Integração com a API do Groq
+A API do Groq segue o formato OpenAI: envio um POST com uma lista de messages, cada uma com um role (system ou user). O system define o comportamento do LLM (ex: "és um assistente de tagging"); o user é a mensagem concreta com o título e conteúdo da nota. A resposta vem em choices[0].message.content. Usei HttpClient com PostAsJsonAsync — sem bibliotecas externas, só o que o .NET já inclui.
+
+
+
 ## Uso de IA
 
 Até agora usei apenas o chat do Claude como apoio. Não usei Copilot, Cursor ou ChatGPT em paralelo. A partir desta fase vou continuar com Claude Code dentro do VS Code, para uma colaboração mais direta com o código à medida que entro na parte dos endpoints.
@@ -47,6 +58,7 @@ Até agora usei apenas o chat do Claude como apoio. Não usei Copilot, Cursor ou
 - A sugestão de criar o ficheiro NOTES.md em paralelo para registar o processo.
 - A estrutura de pastas (Models/, Data/, Dtos/).
 - A convenção de usar DateTime.UtcNow em vez de DateTime.Now.
+- Ajuda na implementação do Groq no código
 
 ### O que questionei ou validei
 - Perguntei se o Swagger era mesmo necessário. O Claude admitiu que o REST Client era alternativa válida e que tinha sugerido Swagger "por instinto". Mantive o Swagger por causa da UI interativa, prática durante o desenvolvimento, mas a partir de uma escolha consciente.

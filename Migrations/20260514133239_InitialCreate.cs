@@ -5,10 +5,11 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Notify.Migrations
 {
-    /// <inheritdoc />
+    // Migração gerada automaticamente pelo EF Core com: dotnet ef migrations add InitialCreate
+    // Aplicada à base de dados com: dotnet ef database update
     public partial class InitialCreate : Migration
     {
-        /// <inheritdoc />
+        // Up: o que fazer ao aplicar a migração (criar a tabela Notes)
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -30,7 +31,7 @@ namespace Notify.Migrations
                 });
         }
 
-        /// <inheritdoc />
+        // Down: como reverter — usado em dotnet ef database update <migração-anterior>
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
