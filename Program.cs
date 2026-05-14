@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using Notify.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -5,6 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite("Data Source=notes.db"));
 
 var app = builder.Build();
 app.UseSwagger();

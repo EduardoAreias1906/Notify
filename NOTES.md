@@ -19,6 +19,18 @@ As tags são geradas automaticamente, o summary é gerado apenas a pedido do uti
 ### [12/05/2026] — Swagger
 Mantive o Swagger porque queria uma interface gráfica onde ir testando os endpoints à medida que os adiciono, sem ter de escrever curl ou usar um cliente externo. Considerei a alternativa do REST Client (ficheiros .http versionáveis no repositório) mas para um projeto em desenvolvimento ativo a comodidade da UI do Swagger pareceu-me mais útil.
 
+### [14/05/2026] — migrações do EF Core
+
+Uma migração é uma alteração ao schema da base de dados descrita em código. Cada migração tem um nome e um timestamp, e fica versionada no Git.
+
+Ao correr `dotnet ef migrations add InitialCreate`, foi criada uma pasta `Migrations/` com três ficheiros, que pertencem a esta única migração:
+
+- `[timestamp]_InitialCreate.cs` — descreve o que fazer (método `Up`, cria a tabela Notes) e como reverter (método `Down`, apaga a tabela).
+- `[timestamp]_InitialCreate.Designer.cs` — ficheiro auto-gerado com metadados do modelo no momento desta migração. Não se mexe.
+- `AppDbContextModelSnapshot.cs` — fotografia do estado atual do modelo. Único no projeto, partilhado por todas as migrações futuras. Quando crio uma nova migração, o EF compara o meu código com este snapshot para perceber o que mudou.
+
+Depois de `dotnet ef database update`, foi criado o ficheiro `notes.db` (SQLite) com a tabela Notes pronta a usar.
+
 ## Uso de IA
 
 Até agora usei apenas o chat do Claude como apoio. Não usei Copilot, Cursor ou ChatGPT em paralelo.
